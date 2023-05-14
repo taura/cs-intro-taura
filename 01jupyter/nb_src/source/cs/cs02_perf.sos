@@ -15,7 +15,7 @@
 ``` 
 cd /work/gt11/$(whoami)
 git clone https://github.com/taura/cs-intro-taura.git
-cd cs-intro-taura/nb_src/source/cs/include
+cd cs-intro-taura/01jupyter/nb_src/source/cs/include
 module unload intel
 module load gcc/7.5.0
 make
