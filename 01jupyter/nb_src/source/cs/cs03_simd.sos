@@ -1,0 +1,251 @@
+<!--- md --->
+
+#* 高性能プログラミングと性能測定(3) --- SIMDプログラミング
+
+<!--- end md --->
+
+<!--- md --->
+
+# 概要
+
+* ベクタ型と(必要ならば)intrinsicsを使って, 確実にSIMD化する手法を学ぶ
+* コンパイラの-Sオプションで実際にSIMD化出来ていることを確かめる
+* そのもとで性能を計測する
+
+<!--- end md --->
+
+<!--- md --->
+
+# SIMD化が(容易に)可能なコード
+
+ * SIMDはSingle Instruction Multiple Dataの略
+ * SIMD命令は, ひとつの命令で複数 (Oakbridge CXのCPU (Cascade Lake)ではfloat, intなど32 bitの要素であれば16個, double, longなど64 bitの要素であれば8個)の要素に対する演算を施す命令
+ * したがってSIMD化できるための前提条件は, 複数データに「同じ演算を施す」ということ
+ * それもそのような演算がある程度の数連続して行わるようでないと, SIMD命令を施すためのデータの配置(SIMDレジスタへ格納するなど)のオーバーヘッドがすぐに大きくなってしまう
+ * したがって, SIMD化出来るコードの近似としては, 「単純なループであって, ループ本体(繰り返しの一回分)は, ほとんど同じ動作をするもの」と理解しておけば良い
+
+<!--- end md --->
+
+<!--- md --->
+
+# SIMD化が(容易に)可能なコード
+
+ * 以下の積分計算
+
+$$ \int_a^b x^2\, dx $$
+
+のSIMD化を試みる. いわゆる区分求積法を用いた積分の計算.
+
+ * 答えがわかりきっていてやる気がおきないかもしれないがSIMDを説明するのに最も単純な例ということで勘弁していただきたい.
+ * まずは通常の(SIMD化されていない)コード
+ 
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile int_x2.c
+<!--- include nb_src/source/cs/include/int_x2.c   --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native int_x2.c -o int_x2
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+./int_x2
+<!--- end code --->
+
+<!--- md ---> 
+
+ * このコードでもっとも時間がかかるのは明らかに以下のループ(それ以外ほとんど何もしていないのだから当然. ちゃんと確かめたければ実行時間がnにほぼ比例していることを確かめれば良い)
+
+```
+  for (long i = 0; i < n; i++) {
+    s += x * x;
+    x += dx;
+  }
+```
+
+ * SIMD化の目標はこのループの複数(Cascade Lakeでは8つ)の繰り返しを同時に処理することである
+
+ * そう思ってループの繰り返し本体を眺めると, 基本的にどの繰り返しでも同じ動作をしていて, 違いはxに入っている値が違うだけとわかる
+
+ * 擬似的に書けば以下のような処理をすれば, 4回分まとめて処理(SIMD化)ができそうとわかる
+
+```
+  // 連続する8回の繰り返しをまとめて処理
+  for (long i = 0; i < n; i += 4) {
+    s += { x, x+dx, x+2*dx, ..., x+7*dx } * { x, x+dx, x+2*dx, ..., x+7*dx };
+    x += 8 * dx;
+  }
+```
+ * なお, nは8で割り切れると仮定する(割り切れない場合は, 端数部分を別途処理する必要があるが普通は近くの8の倍数に切り上げてしまえば計算の目的は達成できるのでここでは気にしないことにする).
+
+ * きちんと動くコードにしたものが以下
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile int_x2_simd.c
+<!--- include nb_src/source/cs/include/int_x2_simd.c  --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native int_x2_simd.c -o int_x2_simd
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+./int_x2_simd
+<!--- end code --->
+
+<!--- md --->
+## timeコマンドでお手軽に経過時間比較
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+time ./int_x2
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./int_x2_simd
+<!--- end code --->
+
+<!--- md --->
+* int_x2 と int_simd の実行時間を比べてみよ
+* より確信を深めるために命令数を測ってみる
+* 以下がそのためのコマンドであるがOakbridge CX上でないと結果は得られない
+<!--- end md --->
+   
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+perf stat ./int_x2
+<!--- end code --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+perf stat ./int_x2_simd
+<!--- end code --->
+
+<!--- md --->
+* 実行命令数が, ほぼぴったり n (= 1000,000,000) の5倍, int_x2_simdではそれがほぼその 1/8 となっていることから, SIMD化はできていると判断できる
+
+<!--- end md --->
+
+<!--- md --->
+
+* 生成されたアセンブリ言語を見てみよう
+* 結果を短くするため, 肝心の関数だけを単体でコンパイルする
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile int_x2_simd_s.c
+<!--- include nb_src/source/cs/include/asm/int_x2_simd_s.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native int_x2_simd.c -S
+cat int_x2_simd.s
+<!--- end code --->
+
+<!--- md --->
+
+* 繰り返されている部分は以下
+
+```
+.L3:
+        addq    $8, %rdx
+        vfmadd231pd     %zmm2, %zmm2, %zmm3
+        vaddpd  %zmm0, %zmm2, %zmm2
+        cmpq    %rax, %rdx
+        jne     .L3
+```
+
+* 繰り返し1回あたりの命令数が5であると確認できた
+
+<!--- end md --->
+
+<!--- md --->
+
+* cycles 数は, nのほぼ4倍で, それはこの繰り返しが一回あたり 4 cyclesかかることを示している
+* それはなぜか? 
+ * 答えは, s += x * x; (s = x * x + s)に対応する命令である, vfmaddpd の遅延が4だからである
+ * このvfmaddpd 命令は, ある繰り返しで計算されてsに格納された結果を次の繰り返しで使っている(依存関係がある)ので, 4 cycles/命令 のペースでしか実行できない
+* 今は天下り的に vfmaddpd に注目したが, もう少しきちんとした考察は同様のことをすべての命令に対して行い, 依存関係を元に, 一周するのにかかる時間を計算することである. 
+* x += 8 * dx (x = x + 8 * dx) に対して生成された vaddpd 命令(8 * dx の掛け算はループ内で行う必要がないのでループの外側で一度だけ8 * dxが計算されている. そのためループ内での掛け算は必要なくなり, 足し算だけになっている)間でも, 依存関係が生じている. その遅延は3である. したがってループ全体の1周あたりの遅延は5となる
+* なお鋭い人はなぜ 5 + 3 = 8 とならず, 5 になるのかと思うかも知れない
+* その理由は, s = x * x + s の計算と, x = x + 8 * dx の計算の間に依存関係がないためで, 両者はプロセッサの中で並行して計算されている(スーパースカラー)
+
+<!--- end md --->
+
+<!--- md --->
+
+* 上記のコードを見てvector_size(64)とか, 4 みたいな定数が各所に出てきて汚いと思った人は正しい感覚の持ち主
+* コンパイラが勝手に最適化してくれないものをしようとしているのである程度汚くなるのは避けられないが, それにしても vector_size が変わっても一箇所だけ書き換えれば済むようにしておくのはいい心がけである
+* また, 一箇所書き換えれば floatも doubleも扱えるようにするのも良い心がけ
+* それをやったのが以下
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile int_x2_simd_v.c
+<!--- include nb_src/source/cs/include/int_x2_simd_v.c   --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native int_x2_simd_v.c -o int_x2_simd_v
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./int_x2_simd_v
+<!--- end code --->
+
+<!--- md --->
+
+#*P 積分計算のSIMD化
+
+* 
+$$ \int_a^b \frac{dx}{1+x^2} $$
+を計算する以下のコードを実行して実行時間を観察せよ (Shift + Enterを叩くだけ)
+* その下のセル(同じコードがコピーされている)を修正して, SIMD化せよ
+* gcc -S オプションを使って, どのような命令が使われているか確かめよ
+* SIMD化されているものとそうでないもので, 実行時間を比べよ
+* -S オプションを用いて, どのような命令がループで繰り返されているか調べよ. 1+x*x や その逆数に相当する命令はどれか?
+* Oakbridge CXでperfコマンドを用いてcyclesを測るか, このページ上で_rdtsc関数を用いてreference cyclesを測るなどして, ループ一回あたりのサイクル数を求めよ
+* なぜそのサイクル数になるのか? ヒント: この計算では割り算を行っており, 割り算命令は遅延も大きいし, クロックあたりに実行可能な最大命令数(スループット)も非常に少ない. https://software.intel.com/sites/landingpage/IntrinsicsGuide/ で調べてみよ
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile int_inv_1_x2.c
+<!--- include nb_src/source/cs/include/int_inv_1_x2.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native int_inv_1_x2.c -o int_inv_1_x2
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./int_inv_1_x2
+<!--- end code --->
+
+<!--- md --->
+
+* 以下を修正してSIMD化せよ
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile int_inv_1_x2_a.c
+<!--- include nb_src/source/cs/include/int_inv_1_x2_a.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native int_inv_1_x2_a.c -o int_inv_1_x2_a
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./int_inv_1_x2_a
+<!--- end code --->

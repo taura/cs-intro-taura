@@ -1,0 +1,739 @@
+<!--- md --->
+
+#* 高性能プログラミングと性能測定(2) --- クロック計測と性能カウンタ計測
+
+<!--- end md --->
+
+<!--- md --->
+
+# 概要
+
+ * プログラムの性能を改善, 最適化するためには当然のことながら性能を計測する必要がある
+ * 漠然と「こうした方が今より速い」という試行錯誤をするよりも, 「限界がいくらか」を理解してそこに近づけるという視点で最適化が出来るようになれば上級者
+ * このnotebookで行う実験の中にはOakbridge CX上で行わないと, 意味の有る結果が得られないものが有る
+ * 準備として Oakbridge CX にログインして
+``` 
+cd /work/gt11/$(whoami)
+git clone https://github.com/taura/cs-intro-taura.git
+cd cs-intro-taura/nb_src/source/cs/include
+module unload intel
+module load gcc/7.5.0
+make
+```
+としておくとよい
+ * このnotebook中で出てくるプログラムは上記フォルダに収められている
+
+<!--- end md --->
+
+<!--- md --->
+
+# コマンドを用いたお手軽計測
+
+<!--- end md --->
+
+<!--- md --->
+## 実経過時間計測
+
+ * `time` コマンドはもっともお手軽にプログラムの実行時間(実際の経過時間)を測れるコマンド
+ * 以下は x = a * x + b という計算をひたすら繰り返すプログラム
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile ax_plus_b.c
+<!--- include nb_src/source/cs/include/ax_plus_b.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native ax_plus_b.c -o ax_plus_b
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b
+<!--- end code --->
+
+<!--- md --->
+
+ * 表示される結果
+
+```
+01jupyter$ time ./ax_plus_b 
+x = 123.447784
+
+real    0m1.109s
+user    0m1.102s
+sys     0m0.001s
+```
+
+のうち,
+
+```
+real    0m1.109s
+```
+
+というところに注目(数字はもちろん実行する度に違う). 上記は実時間として1.109秒かかっていたということ.
+
+<!--- end md --->
+
+<!--- md --->
+
+## Linux perf コマンド 基本
+
+* perf は Linuxでプログラムの挙動を解析する超有用ツール
+* 情報源は色々あるので時間のある時に, perf linux とでもしてググってみてください
+* 実時間だけでなく, クロック数, 実行した命令数, 特定の種類の命令数, キャッシュミスの数など色々なものが測定できるので, 「プログラムの挙動が自分の意図したものと同じかどうか」を測るのに使える
+* <font color=red>残念なお知らせ</font> このページで Shift + Enterを叩くと &lt; not supported &gt; のような結果が多く表示される
+* プログラムが仮想環境上で動いており, そこではセキュリティ上の理由からほとんどの情報は取れなくなっているのが理由
+* perf を使った結果は, Oakbridge CX上で自分でコマンドを実行する(ログインノードでコマンドを実行するかまたはシェルスクリプトを書いてジョブを投げる)ときちんとした結果が得られます
+* 以下そのようなプログラムには <font color="blue">on Oakbridge CX</font> というラベルをふっておきます
+
+<!--- end md --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+perf stat ./ax_plus_b
+<!--- end code --->
+
+<!--- md ---> 
+
+ * perf がまともに使える環境でやると以下のような結果が得られる
+ * 正確な数字はもちろん環境によって異なるし, 実行する度に微妙に違い得る. 以下の説明は, 結果が以下の数字だったという前提で続ける
+ * 上述したとおり上記で `Shift + Enter`をしたときは (Amazonクラウドの制限により) ほとんどの結果は &lt; not supported &gt; となって教えてくれない(が, 気にしない)
+
+```
+01jupyter$ perf stat ./ax_plus_b 
+x = 123.447784
+
+ Performance counter stats for './ax_plus_b':
+
+          1,088.39 msec task-clock                #    0.996 CPUs utilized
+                 9      context-switches          #    0.008 K/sec
+                 0      cpu-migrations            #    0.000 K/sec
+               211      page-faults               #    0.194 K/sec
+     4,019,477,577      cycles                    #    3.693 GHz
+     4,008,895,587      instructions              #    1.00  insn per cycle
+     1,001,638,024      branches                  #  920.289 M/sec
+            31,486      branch-misses             #    0.00% of all branches
+
+       1.092366311 seconds time elapsed
+
+       1.087945000 seconds user
+       0.000997000 seconds sys
+```
+
+* 1.635826720 seconds time elapsed は timeコマンドが表示するのと同じ情報
+* 特に重要・有用なのは, <font color="blue">cycles</font> で, プログラムを実行するのにプロセッサが刻んだクロック数. これがなぜ重要・有用かは後ほど説明する
+* <font color="blue">instructions</font>もしばしば重要. 命令数はクロック数よりも予測しやすいので, 目論見が成功しているかどうかの検算に適している
+
+<!--- end md --->
+
+<!--- md --->
+
+* ためしに命令数が, 理解と相違ないかを確認してみよう.
+* 今実行しているプログラムは,
+
+```
+x = a * x + b
+```
+
+という計算を多数回(引数で指定しなければ 1000L * 1000L * 1000L = 10億回)繰り返すもので, 実行命令の殆どはこのループに費やされていると思われる
+
+* ではこのループの実行に相当する機械語を見てみると,
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile ax_plus_b_s.c
+<!--- include nb_src/source/cs/include/asm/ax_plus_b_s.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -S -O3 -march=native ax_plus_b_s.c
+cat ax_plus_b_s.s
+<!--- end code --->
+
+<!--- md --->
+
+ * `# ============= ax_plus_b` と `# ------------- ax_plus_b` で囲まれているのは以下の部分
+
+```
+        # ============= ax_plus_b
+# 0 "" 2
+#NO_APP
+	testq	%rdi, %rdi
+	jle	.L2
+	xorl	%eax, %eax
+	.p2align 4,,10
+	.p2align 3
+.L3:
+	addq	$1, %rax
+	vfmadd132ss	%xmm0, %xmm1, %xmm2
+	cmpq	%rax, %rdi
+	jne	.L3
+.L2:
+#APP
+# 10 "ax_plus_b_s.c" 1
+	# ------------- ax_plus_b
+```
+
+* この中で, ラベル (.Lx) とジャンプ命令(jで始まる命令. 下記では jle .L2とjne .L3)の宛先に注目すると, どうやらループ本体として実行されてるのは
+
+```
+.L3:
+	addq	$1, %rax
+	vfmadd132ss	%xmm0, %xmm1, %xmm2
+	cmpq	%rax, %rdi
+	jne	.L3
+```
+
+* 見ての通り4命令
+* おそらく`vfmadd132ss` 命令で a * x + b の計算が行われている
+* 残りはループを n 回回るための計算で, 
+ * `addq $1, %rax` が i++
+ * `cmpq %rax, %rdi` が i と n を比較する命令
+ * `jne .L3` (jump if not equal) は cmpq 命令の結果, not equal だったら .L3 にジャンプする(つまり, まだループを続ける)という命令
+
+* つまりこのループで 4000000000 命令. これと実際の命令数 (4,008,895,587 instructions) が極めてよく一致していることに気を良くしてほしい(もちろんループ以外にもmain関数やそこに至るまでに相当数の命令を実行しているのでぴったり一致とはならない)
+* 引数nを色々変えて自信を深めると良い
+
+<!--- end md --->
+
+<!--- md --->
+
+* ついでに <font color="blue">1,001,638,024 branches</font> も自信を深める要素になる. これは繰り返しの回数にほぼ一致している
+
+<!--- end md --->
+
+<!--- md --->
+
+# cycles を理解する
+
+* 上記で表示された
+
+```
+     4,019,477,577      cycles                    #    3.693 GHz
+```
+
+もなにやらループの繰り返し数1000000000と関係していそうである.
+
+* おそらく以下のループを一周するのに 4 cycle かかるということなのだろう
+
+```
+.L3:
+	addq	$1, %rax
+	vfmadd132ss	%xmm0, %xmm1, %xmm2
+	cmpq	%rax, %rdi
+	jne	.L3
+```
+
+* なぜ5 cycleか?
+* 命令にはその結果が出るまでの「遅延」というものが決まっている(中村先生の授業を参照)
+* その命令の遅延が命令の種類とプロセッサの詳細設計(世代)によって異なっており, Oakbridge CXのSkylake (より細かくはCaskade Lake)というCPU (<a href="https://ark.intel.com/content/www/jp/ja/ark/products/192478/intel-xeon-platinum-8280-processor-38-5m-cache-2-70-ghz.html" target="_blank">詳細</a>) では, vfmadd132ss 命令の遅延が4なのである
+* 上記のループは, vfmadd132ss 命令の結果 (x = a * x + b の結果)を, 次の vfmadd132ss 命令が使う(命令間に依存関係がある)ため, <font color="red">「vfmaddssの実行は 4 クロックに1回というペースでしか進まない」</font>
+
+* 上記のループが1000000000回 回るのに約4000000000 cycles かかるのはそういう理由による(命令数が4だから, というわけではない)
+* 厳密にはその他の命令についても同様の考察(各命令の遅延がいくらで, どの命令とどの命令の間に依存関係があるか)をして初めて実行速度が正確に予測できるが, add $1,%raxやcmp %rax,%rdi のような整数間の加減算の遅延は少ない(1や2)のであまり問題にならない
+
+* なお, ループ1周にかかる時間を予測するのに必ず機械語を見ないといけないわけではない
+```
+  for (long j = 0; j < n; j++) {
+    x = a * x + b;
+  }
+```
+というループを見れば, `a * x + b`という計算が, 依存関係をもっている(ある fmadd の結果が次のfmaddで使われる)ことは機械語を見なくても明らかで, それ以外の計算 (`j++` や `j &lt; n`)が遅延を律速することはないだろうと割り切れば, 上記ループの1周にかかる時間は, fmadd命令の遅延にほかならないと理解できる
+
+* 最後に, 命令の遅延なんていうマニアックな情報を全部知らないといけない? と思った人へ
+ * Intel Intrinsics Guideで命令を検索すると, たいがいのものは遅延が書いてある https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+ * また, すべての命令の遅延をまとめた表もある https://www.agner.org/optimize/#manuals の 4. Instruction tables: Lists of instruction latencies, throughputs and micro-operation breakdowns for Intel, AMD and VIA CPUs. この中の Skylake のシートを参照
+ * 最高性能近くを目指す場合, 非常によく出るものに関しては覚えて損はない
+ * メモリアクセスに関してはキャッシュに当たる・当たらないで雲泥の差があるので, 一つには決められないが, 最低遅延(1次キャッシュヒット時)くらいは覚えておいて損はない
+
+<!--- end md --->
+
+<!--- md --->
+
+## Linux perf コマンド 中級
+
+* perfではデフォルトで表示される, instructionsやbranchesの他にも様々な出来事(イベント)の回数を表示できる
+* 使い方は
+
+```
+perf stat -e イベント名 -e イベント名 -e イベント名 ... コマンド
+```
+
+* どのようなイベントが表示できるかは
+```
+perf list
+```
+で取得できるが, おびただしい数の(おそらく殆ど意味のわからない)イベントが表示される
+
+<!--- end md --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+perf list
+<!--- end code --->
+
+<!--- md --->
+
+ * そうして表示されたもののうち, 以下では自信を深めるために,
+```
+fp_arith_inst_retired.scalar_single
+```
+の回数を表示してみる. これは, スカラーの(SIMDではない), 単精度(32 bit)浮動小数点(Cのfloat)の命令数. つまり上記ループの vfmadd132ss が実行された回数を数えているつもり
+
+<!--- end md --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+#
+perf stat -e fp_arith_inst_retired.scalar_single -e instructions -e cycles ./ax_plus_b
+<!--- end code --->
+
+<!--- md --->
+
+ * Oakbridge CXでの結果
+
+```
+01jupyter$ perf stat -e fp_arith_inst_retired.scalar_single -e instructions -e cycles ./ax_plus_b
+x = 123.447784
+
+ Performance counter stats for './ax_plus_b':
+
+     2,000,000,000      fp_arith_inst_retired.scalar_single
+     4,008,725,044      instructions              #    1.00  insn per cycle
+     4,009,404,903      cycles
+
+       1.093286355 seconds time elapsed
+```
+
+ * 1000000000 になるのかとおもいきや 2000000000となった. これはおそらく fmadd は掛け算と足し算で2回分と数えられているのだろう(この辺はプロセッサの実装がどうなっているかを知らないと, どうせ正確なことはわからないので, 柔軟にというか, 事実に適度に自分を迎合させつつ納得する)
+ * なお, そう思って perf list の説明をよく読むと, それを裏付けることが書いてあった (FM(N)ADD... 以降)
+
+```
+  fp_arith_inst_retired.scalar_single               
+       [Number of SSE/AVX computational scalar single precision floating-point
+        instructions retired. Each count represents 1 computation. Applies to
+        SSE* and AVX* scalar single precision floating-point instructions: ADD
+        SUB MUL DIV MIN MAX RCP RSQRT SQRT FM(N)ADD/SUB. FM(N)ADD/SUB
+        instructions count twice as they perform multiple calculations per
+        element]
+```
+
+<!--- end md --->
+
+<!--- md --->
+
+## サイクル数にも2種類ある
+
+* 上記で cycles がプロセッサの刻むサイクル数のことであると述べた
+* 実は最近のプロセッサにはもう一つ別の種類のサイクル数がある (reference cycles)
+* perfでは ref-cycles というイベントで取得可能
+
+<!--- end md --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+perf stat -e cycles -e ref-cycles ./ax_plus_b
+<!--- end code --->
+
+<!--- md --->
+
+ * 両者は似て非なる値を返してくる. 以下はOakbridge CXで実行したときの値
+
+```
+01jupyter$ perf stat -e cycles -e ref-cycles ./ax_plus_b
+x = 123.447784
+
+ Performance counter stats for './ax_plus_b':
+
+     4,018,032,001      cycles
+     2,857,892,004      ref-cycles
+
+       1.062758164 seconds time elapsed
+
+       1.056596000 seconds user
+       0.002990000 seconds sys
+```
+
+ * 事情を抜きにして先に結論を述べると, 性能が思ったとおりになっているかを顕微鏡的に観測するには  cycles が適しており, わざわざ ref-cyclesを使う意味はあまりない
+ * 以降前者をprocessor cycle数, 後者をreference cycle数と呼ぶことにしよう(後者は世に普及した言葉. 前者は, 後者との区別のためにここで便宜的に導入した言葉)
+ * processor cycle数は実時間にぴったり比例しているわけではなく, 1 processor cycle にかかる本当の時間は<font color="red">プロセッサの周波数調整機能(Dynamic Voltage/Frequency Scaling; DVFS)</font>によって, 実行時に伸び縮みしている
+ * それに対し, reference cycle は常に一定で刻まれる, 実時間に完全対応したcycleである
+ * 一般にプロセッサは消費電力をある値以内におさえるため, 動いているコアの数が多いときは周波数を下げ, 少なければあげる, ということをする
+ * したがって同じ 1000000 processor cyclesかかる計算でも実時間では1コアのときのほうが速い, ということが生じる
+ * 「vfmaddの遅延が4サイクルである」とか, 「このプロセッサは1サイクルにvfmaddを2個まで実行できる」などというときのサイクルは, 4 "processor" cyclesという意味である. この値は, アーキテクチャのパイプラインの構成によってぴたっと決まる値であり, プロセッサの動作周波数が早かろうが遅かろうが常に4 processor cyclesである. 一方これをreference cycle数(実時間)で測ると, 動作周波数が速ければ少なくなるし, 遅ければ多くなる
+ * プログラムが思い通りの速度で動作しているかを知るために, 細かい測定をしている時は, 周波数が増減しようともいつも同じ値を示してくれる (DVFSの影響を受けない) processor cyclesの方が都合が良い
+
+ * だったらなぜわざわざ reference cycles の話をするの? と思った(鋭い)人へ
+ * それは, 実時間やreference cyclesはプログラム内からでも比較的気楽に入手できるのに対し, processor cyclesの方はそれなりのプログラムを準備しないと取得できない
+ * また, Amazon Web Serviceなど, processor cyclesが(田浦の知る限り)得られない環境もある(実は出来るという情報をくれた人には昼飯をおごります)
+ * よって場合によってはDVFSの影響は受けることを承知で, 実時間やreference cyclesを(しぶしぶ)使うという選択肢もある
+
+<!--- end md --->
+
+<!--- md --->
+
+## データアクセス性能
+
+* fmaddの遅延が4 processor cyclesであることを見たが実際のプログラムではデータをメモリ(キャッシュ)とやり取りする部分でさらに遅延が加わる
+* とくにメモリのアクセスはデータがキャッシュにあるかどうか, どのレベルのキャッシュにあるかで雲泥の差が出る
+* 最近のIntelのプロセッサのメモリは4階層 (L1キャッシュ, L2キャッシュ, L3キャッシュ, 主記憶)
+ * L1キャッシュが一番早くて小さい
+ * 主記憶が一番遅くて大きい
+ * 以下はOakbridge CXの計算ノードの構成(ログインノードは微妙に違うがほぼ同じ)
+ * Linuxではlscpuというコマンドで得られる
+
+|レベル|サイズ|
+|------|------|
+| L1   |32KB  |
+| L2   |1MB   |
+| L3   |39MB  |
+|主記憶|192GB |
+
+* キャッシュの大雑把な動作は「最近アクセスされたものを覚えている」
+* したがって最近アクセスしたものをすぐにまたアクセスすればキャッシュに載っているし, そうでなければ載っていない
+* たとえば 32KB 以内の領域(だけ)をひたすら繰り返しアクセスするプログラムはほとんどL1キャッシュしかアクセスしない
+* L1キャッシュに当たったときのアクセスとすべてのキャッシュにはずれたときの性能差は激しいので一度見ておくほうが良い
+* 以下のプログラムは, 
+```
+./ax_plus_b_many log_m s log_n
+```
+として実行すると,
+ * $m = 2^{\log m}$ 要素のdouble型の配列Xを作る
+ * その配列の要素を$s$ 要素おきに$m \times n$ 回アクセスする(配列の終わりに行ったら先頭に戻る. 正確には, $i$回目のアクセスでは $(s \times i) \mod m$ 番目の要素をアクセスする)
+```
+      y += a * X[(i * s) % m];
+```
+ * それを$n$回繰り返す
+
+* $m$ が小さければ小さな領域を, 大きければ大きな領域を触ることになる
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile ax_plus_b_many.c
+<!--- include nb_src/source/cs/include/ax_plus_b_many.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native ax_plus_b_many.c -o ax_plus_b_many
+<!--- end code --->
+
+<!--- md --->
+
+* 以下はどれも $\log m + \log n = 30$ ($m n = 2^{30}$) という設定. つまりどのケースも同じだけのメモリアクセスを発行し, 同じだけの fmadd の計算をする
+* しかし, $m$ が小さい場合と大きい場合で(わずかだが)性能が違う
+
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 10 1 20
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 24 1 6
+<!--- end code --->
+
+<!--- md --->
+
+* 上記は$s = 1$だったので配列の先頭から終わりまでを切れ目なく連続的にアクセスする
+
+* $s$を大きくする($X$ を飛び飛びにアクセスするようにする) とさらに性能差が目立つようになる
+
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 24 1 6
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 24 3 6
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 24 5 6
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 24 17 6
+<!--- end code --->
+
+<!--- md --->
+
+* なお, $\log m$ が小さいうちは $s$ を大きくしても性能は変わらない
+
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 10 1 20
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+time ./ax_plus_b_many 24 1 6
+<!--- end code --->
+
+<!--- md --->
+
+* これらはキャッシュの挙動と関係している
+* キャッシュサイズ以上の領域を同じ順序で繰り返しアクセスするプログラムは, あるデータxをアクセスしてからもう一度そのデータxに触るまでにキャッシュサイズ以上のデータをアクセスするということだから, きっとその時にデータxはキャッシュからなくなっている(キャッシュは, 「最近アクセスされたものを覚えておく」ことに注意). したがってキャッシュミスを起こす
+* これが以下のようなケース ($m = 2^{24}$ (128MB), $s = 17$)でおきていることである
+```
+./ax_plus_b_many 24 17 6
+```
+<!--- end md --->
+
+<!--- md --->
+
+* こう考えると, キャッシュサイズ以上の領域を同じ順序で繰り返しアクセスするプログラムは, ほぼすべてのアクセスがキャッシュミスをするということになりそうだがそこまで話は単純ではない
+
+* キャッシュとデータのやり取りは「キャッシュライン」という塊 (Intel CPUの場合64バイト)で行われる. つまりあるラインのデータを触ると残りのデータも一緒に連れてこられ, それらに対するアクセスは(アクセスされるまでに追い出されなければ)ミスしない. 特に, 連続した領域を触る場合はあるラインの先頭のデータをアクセスした後残りのデータをすぐに触ることになるので, 「1ラインにつき1回」(doubleの場合8要素につき1回」のキャッシュミスになる
+
+* また, プロセッサにはプリフェッチという機能も備わっており, ある領域を一定の間隔でアクセスしている場合にそれを検出して, 先のキャッシュラインを予めアクセスしておくという機能や, 隣接ラインプリフェッチと言って, あるラインにアクセスした時に隣のラインを(ほぼ無条件に)アクセスするような機能もあり, 実際のキャッシュミス数を正確に予測するのは難しい
+
+<!--- end md --->
+
+<!--- md --->
+
+# perf stat を使ってキャッシュミスを計測してみよう
+
+* perf stat -e に適切なイベント名を与えることでキャッシュミスの計測が出来る (イベント名は perf list で探る)
+  * L1-dcache-load-misses が ロード(読み込み)時の, L1 データキャッシュへのミス
+  * LLC-load-misses が ロード(読み込み)時の, Last Level Cache (L3 キャッシュ)へのミス
+
+* $m = 2^{24}$, $n = 2^{6}$ $s = 17$ として測定
+
+<!--- end md --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+#
+perf stat -e instructions -e fp_arith_inst_retired.scalar_double -e LLC-load-misses -e L1-dcache-load-misses -e cycles ./ax_plus_b_many 24 17 6
+<!--- end code --->
+
+<!--- md --->
+* 以下は Oakbridge CXでの結果 
+
+01jupyter$ perf stat -e instructions -e fp_arith_inst_retired.scalar_double -e LLC-load-misses -e L1-dcache-load-misses -e cycles ./ax_plus_b_many 24 17 6
+scan 16777216 elements 64 times (1073741824 accesses) with stride 17
+y = 1072668062.124269
+
+ Performance counter stats for './ax_plus_b_many 24 17 6':
+
+     6,511,262,691      instructions              #    0.22  insn per cycle
+     2,147,483,648      fp_arith_inst_retired.scalar_double
+       719,379,578      LLC-load-misses
+     1,084,287,956      L1-dcache-load-misses
+    29,678,462,806      cycles
+
+       7.965104255 seconds time elapsed
+
+       7.821387000 seconds user
+       0.062858000 seconds sys
+```
+
+* $m = 2^{24}$, $n = 2^{6}$ だから合計で以下の文(fmadd)を $2^{30}$回実行している
+```
+      y += a * X[j & mask];
+```
+* この結果と fp_arith_inst_retired.scalar_doubleが2,147,483,648 ($2^{31}$)回という結果は一貫している(fmaddは2と数えられている)
+* L1-dcache-load-misses は L1キャシュのミスの回数を数えているものでこれがほぼ$2^{30}$であるということから, `X[j & mask]`を一回アクセスする度にキャッシュミスを起こしているであろうことがわかる
+* 少し小さいが同じことが `LLC-load-misses` (LLC = Last Level Cache, つまりL3キャッシュ)についても言える. ほぼ全てのアクセスが主記憶からのアクセスとなっている
+* 1回のfmaddあたりにかかっているcycles 数は 14程度
+* ここでは詳しく説明しないが, 主記憶アクセスの遅延は100以上あって, このプログラムではそれでも複数の主記憶アクセスが並行して(オーバーラップして)起きるために, 1回あたりの (見かけ上の) cycles 数は 14程度で収まっている
+* それでも, 浮動小数点演算が「1サイクルに2つ」行えるのと比べると, 主記憶のデータを処理する速度は非常に遅いことがわかると思う
+
+<!--- end md --->
+
+<!--- md --->
+
+* 色々なケースでの結果
+
+| m          | n          | s  | instructions  | scalar_double | LLC-load-misses | L1-dcache-load-misses | cycles         | elapsed |
+|------------|------------|----|---------------|---------------|-----------------|-----------------------|----------------|---------|
+| $2^{10}$ | $2^{20}$ | 1  | 6,458,848,683 | 2,147,483,648 | 1,450           | 100,796               | 4,304,680,761  |1.237    |
+| $2^{24}$ | $2^{6}$  | 1  | 6,461,952,180 | 2,147,483,648 | 56,276          | 138,519,764           | 4,825,056,440  |1.382    |
+| $2^{10}$ | $2^{20}$ | 17 | 6,454,001,676 | 2,147,483,648 | 788             | 41,172                | 4,299,026,420  |1.232    |
+| $2^{24}$ | $2^{6}$  | 17 | 6,464,021,032 | 2,147,483,648 | 730,137,023     | 1,078,079,987         | 26,182,325,529 |7.499    |
+
+* どのケースでも命令数や演算数(scalar_double)はかわらない
+* $m$が大きいケースでも$s = 1$ならばキャッシュミスはそこまで多くはならない
+
+<!--- end md --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+#
+perf stat -e instructions -e fp_arith_inst_retired.scalar_double -e LLC-load-misses -e L1-dcache-load-misses -e cycles ./ax_plus_b_many 10 1 20
+<!--- end code --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+#
+perf stat -e instructions -e fp_arith_inst_retired.scalar_double -e LLC-load-misses -e L1-dcache-load-misses -e cycles ./ax_plus_b_many 24 1 6
+<!--- end code --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+#
+perf stat -e instructions -e fp_arith_inst_retired.scalar_double -e LLC-load-misses -e L1-dcache-load-misses -e cycles ./ax_plus_b_many 10 17 20
+<!--- end code --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+<!--- code w kernel=bash --->
+#
+perf stat -e instructions -e fp_arith_inst_retired.scalar_double -e LLC-load-misses -e L1-dcache-load-misses -e cycles ./ax_plus_b_many 24 17 6
+<!--- end code --->
+
+<!--- md --->
+
+# プログラム内からの測定
+
+ * timeやperfコマンドはプログラムのイベントを測る手軽な手段
+ * プログラムの書き換えも必要がなく, これで済むうちはそれらを使えばよい
+
+ * 一方それらはプログラムの実行「全体」に渡る測定しか出来ない
+ * 通常, 最適化をしているときはプログラムのある一部分に注目して変更・測定を繰り返す
+ * プログラム実行時間のうちそこが99%を占める(またはそうできる)のであればコマンドで全体を測るので十分だが, そうは出来ない場合もある
+ * 複数のコア(スレッド)を使って動作しているプログラムの一スレッドだけを測定したい場合もある
+ * それらの場合にはプログラムの内部に測定コードを挿入して測定する必要がある
+
+<!--- end md --->
+
+<!--- md --->
+
+## 経過時間
+
+ * およそどんなOSでも, 「現在時刻」を教えてくれる関数が備わっている
+ * Linux: <a href="https://linuxjm.osdn.jp/html/LDP_man-pages/man2/clock_getres.2.html">clock_gettime</a> (nano ($10^{-9}$)秒単位), <a href="https://linuxjm.osdn.jp/html/LDP_man-pages/man2/gettimeofday.2.html">gettimeofday</a> ($\mu$ ($10^{-6}$)秒単位)
+ * Mac OS: gettimeofday
+ * Windows: QueryPerformanceCounter
+
+<!--- end md --->
+
+<!--- md --->
+
+## clock_gettimeofday
+
+ * Linuxならこれを使う (他のOSに気を使うなら gettimeofday)
+ * `#include <time.h>`して `clock_gettimeofday` を呼び出すだけ
+ * 単位はnano 秒
+ * 1 nano秒は 1 GHzのプロセッサが1サイクルを刻む時間. 普通のプロセッサの周波数は2〜3 GHz程度なので, 実時間としてはこれ以上細かくしても意味はないというくらい細かい
+ * 単位がnano秒であることと, 測定結果の精度は別問題だがLinuxではかなりの精度を期待して良い
+ * 測定値の取扱い上の注意としては, 測定のための関数呼び出しその他のオーバーヘッド(数十サイクル)があるということ
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile ax_plus_b_clock_gettime.c
+<!--- include nb_src/source/cs/include/ax_plus_b_clock_gettime.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native ax_plus_b_clock_gettime.c -o ax_plus_b_clock_gettime
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+./ax_plus_b_clock_gettime
+<!--- end code --->
+
+<!--- md --->
+
+## _rdtsc()
+
+* プロセッサの reference cycle を比較的簡単に得る関数
+* `#include <x86intrin.h>` として `_rdtsc()`を呼び出すだけ
+* Intel x86系 CPUが持つ rdtsc という命令に対応した関数で, x86系でしか使えない(多くのCPUには名前は違えど同じ機能の命令がある)
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile ax_plus_b_rdstc.c
+<!--- include nb_src/source/cs/include/ax_plus_b_rdstc.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native ax_plus_b_rdtsc.c -o ax_plus_b_rdtsc
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+./ax_plus_b_rdtsc
+<!--- end code --->
+
+<!--- md --->
+
+* reference cyclesなのでperfのcyclesを見た時のようにほぼピッタリ5 cycles/fmaddということにはならない
+* その意味では実時間を測るのと大差はないが, それでも5に近い値が出ることで自分の理解との一致を確かめることは気分的にやさしくなる(周波数が2.3 GHzだからnano秒にx 2.3するみたいなことはしなくてよい)
+
+<!--- end md --->
+
+<!--- md --->
+## Linux perfをプログラムから使う
+
+* perfコマンドが表示するような様々なイベントの回数を, プログラムの一部分に対してのみ測定することも出来る
+* しかしそれにはそれなりのプログラミングが必要でここでそれを全部解説することはできないので, それを簡単に使えるようにしたものを(こちらで)用意したのでそれを使う
+* その使い方は以下(以下はこのページ上で実行しても失敗しますが気にしないで下さい)
+* Oakbridge CXでやりたい人は, Oakbridge CX上での演習用のコードに収納しているのでそちらを試して下さい
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile ax_plus_b_pfm.c
+<!--- include nb_src/source/cs/include/ax_plus_b_pfm.c --->
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native ax_plus_b_pfm.c -o ax_plus_b_pfm
+<!--- end code --->
+
+<!--- md --->
+<font color="blue">on Oakbridge CX</font> 
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+./ax_plus_b_pfm
+<!--- end code --->
+
+<!--- md ---> 
+
+ * 使い方の基本:
+ * `#include "counter.h"` して
+ * 計測したい部分 (...) を
+```
+  profiler_t c = mk_profiler();
+    ...
+  counters_t c = profiler_get(pr);
+```
+で挟む.
+
+* c.values[0] には processor cycle 数
+* c.values[1] には 命令数
+* c.values[2] には 分岐命令数
+
+が入っている.
+
+* mk_counters() 関数の中を少し修正すれば他のものを計測することもできる.
+
+<!--- end md --->
+

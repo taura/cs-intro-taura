@@ -1,0 +1,128 @@
+<!--- md --->
+
+#* 計算科学概論 自習用環境
+
+* cs0x_xxxx.ipynb というファイルを順に開いて読みながら実行して下さい
+* ほとんどの部分は読んで理解して, Shift + Enterで実行してその結果を味わえば良いだけです
+* 所々にプログラミングを少しやってみようという課題が出てきます
+
+<!--- end md --->
+
+<!--- md --->
+
+# このnotebookの使い方 / How this notebook works
+<!--- end md --->
+
+<!--- md --->
+
+## Pythonプログラムのセル
+
+* SHIFT + Enter で実行
+
+
+* Execute by SHIFT + Enter
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+# a Python cell
+def f(x):
+    return x + 1
+
+f(10)
+<!--- end code --->
+
+<!--- md --->
+## Cプログラムのセル
+
+* `%%writefile ファイル名`  で始まる
+* Python のセルだがCプログラム(実際は任意の文字列)が書かれている
+* SHIFT + Enter で, 内容がファイルに保存される(実行はされない)
+
+
+* begins with `%%writefile filename`
+* it is a Python code cell, but in fact has a C program (any string, for that matter)
+* SHIFT + Enter saves the contents into the specified file (does not execute it)
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile hello.c
+/* a C cell */
+#include <stdio.h>
+int main() {
+    printf("hello\n");
+    return 0;
+}
+<!--- end code --->
+
+<!--- md --->
+## bash (コマンド) のセル
+
+* Linuxのコマンドを実行できる
+* ただしバグがあって, 出力が正しく出ないことがある(おかしいなと思ったら何度か実行してみてください)
+
+
+* can run any Linux command
+* it seems to have a bug that drops the output (when in doubt, execute it again)
+
+<!--- end md --->
+
+<!--- code w kernel=bash --->
+pwd
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+ls
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -o hello hello.c
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+./hello
+<!--- end code --->
+
+<!--- md ---> 
+
+ * このようなテキストが表示されている部分もセルであり, クリックすることで編集可能になり, `Shift + Enter`で編集結果を表示できる.
+
+<!--- end md --->
+
+<!--- md w --->
+
+**このセルを編集して, 名前と学生証番号を書け.**
+
+ * 名前 Name : 
+ * 学生証番号 Student ID : 
+
+**書けたら Shift + Enter で実行して入力を確定させよ**
+
+<!--- end md --->
+
+<!--- md --->
+
+ * セルを編集したり実行したら**こまめに保存** (`Ctrl-S`) せよ
+
+<!--- end md --->
+
+<!--- md --->
+
+# Jupyter notebookの目的
+
+* つまらないエラーと格闘しなくて良いようにほとんどのプログラムやコマンドを与えており, `Shift + Enter`を押していけば, どんなプログラムをコンパイルして実行すると, 何が起きるのかが学べるように作っている
+* ここで頭に入れたことを, (Jupyter環境を離れて) Oakbridge CX上で, 自力でコマンドを打って実践できるようになるのが演習のゴール
+
+<!--- end md --->
+
+<!--- md --->
+
+# ロードマップ
+
+1. 機械語(アセンブリ言語), コンパイラの出力, をある程度理解できるようになる
+1. perfコマンドやライブラリで正確な性能測定が出来るようになる
+1. ベクタ型やベクタintrinsicsを使ってSIMD化ができる
+1. OpenMPでマルチコア並列化が出来る
+
+<!--- end md --->
+

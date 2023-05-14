@@ -1,0 +1,275 @@
+<!--- md --->
+
+#* 高性能プログラミングと性能測定 --- 機械語(アセンブリ)を見る
+
+<!--- end md --->
+
+<!--- md --->
+
+# 概要
+
+* 機械語(アセンブリ言語)を用いなくてもプログラミングできるようになるのが高級言語の存在意義だが, 性能を追求する場合はC/C++言語から機械語の対応関係を, なんとなくでも把握できていないと正確な話はできない
+
+* 極める必要はないが, 対応関係の「おおよそのところ」が把握できるようになるのが目標
+
+<!--- end md --->
+
+<!--- md --->
+
+# コンパイラの出力を見る
+
+* GCC, Intel Compilerなど大概のコンパイラは`-S`オプションで, アセンブリ言語を生成できる
+* これを用いてCのコードからどのようなコードが生成されたかを見てみる
+* 性能をあげようと思ったコードの変更が裏目に出て遅くなるなど, 色々な場面でこれが必要になる
+* 性能を追求するときは大概, 最適化オプション(-O3)をつけるので, -O3と併用した方がよい
+* 各CPUの命令セットをフルに使うために -march=native をつける
+
+<!--- end md --->
+
+<!--- md --->
+
+## 足し算, 掛け算, 足し算/掛け算 するだけの単純な関数
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile add_mul.c
+
+float add(float x, float y) {
+  return x + y;
+}
+
+float mul(float x, float y) {
+  return x * y;
+}
+
+float muladd(float x, float y, float z) {
+  return x * y + z;
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -march=native -O3 -S add_mul.c
+cat add_mul.s
+<!--- end code --->
+
+<!--- md ---> 
+
+注目点
+
+* 関数名に対応するラベル(add, mul, muladdなど)がアセンブリ内にもある
+* 掛け算や足し算から生成されている命令はなにか?
+* 掛け算+足し算を一撃で行う命令 (fmadd) 命令があるようだ
+* 使われている命令はスカラー(1要素用)命令か, SIMD (複数要素用)命令か? どうやって区別するんだっけ?
+
+<!--- end md --->
+
+<!--- md ---> 
+
+## ループを含む例
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile loop.c
+
+float loop(float x, float a, float b, long n) {
+  for (long i = 0; i < n; i++) {
+    x = a * x + b;
+  }
+  return x;
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -march=native -O3 -S loop.c
+cat loop.s
+<!--- end code --->
+
+<!--- md ---> 
+
+注目点
+
+* ループがあると, ループ先頭に戻るジャンプ命令 (jで始まる命令)とループ先頭のラベルが生成される. こんな感じ
+```
+.L3
+   ...
+   ...
+   ...
+   ...
+   jXX .L3
+```
+
+* 一般にコンパイラは最適化(高速化)として, ループの内部の命令を最小化しようとする
+
+<!--- end md --->
+
+<!--- md ---> 
+
+* 少しでもコードが複雑になると自分が注目している部分がどう翻訳されているのかを見つけることが困難になる
+* そのための有用なテク. コード中に以下のような文(asm volatile("# ..."))を挿入する
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile loop2.c
+
+float loop2(float x, float a, float b, long n) {
+  for (long i = 0; i < n; i++) {
+    x = b * x + a;
+    asm volatile("# ==========");
+    for (long j = 0; j < n; j++) {
+      x = a * x + b;
+    }
+    asm volatile("# ----------");
+  }
+  return x;
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -march=native -O3 -S loop2.c
+cat loop2.s
+<!--- end code --->
+
+<!--- md --->
+
+* 見ての通り"# =========="や"# ----------"が翻訳結果にそのまま挿入される
+* おそらくその間に挟まれた部分が, 元々のプログラムに置いても asm volatile("# =========="); と asm volatile("# ----------"); に挟まれた部分
+* よって注目したい部分を適当な asm volatile で挟めば良い
+<!--- end md --->
+
+
+<!--- md ---> 
+
+## メモリアクセスを含む例
+
+### 配列の要素読み込み (ロード命令)
+
+* Intelのアセンブリの文法では, `(レジスタ名)` でそのレジスタに入っているアドレスをアクセスするという意味になる
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile load.c
+
+float load(float * a, long n) {
+  float s = 0.0;
+  asm volatile("# ==========");
+  for (long i = 0; i < n; i++) {
+    s += a[i];
+  }
+  asm volatile("# ----------");
+  return s;
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native -S load.c
+cat load.s
+<!--- end code --->
+
+<!--- md ---> 
+
+注目点:
+
+* a[i] の読み出しに対応する命令はどれか?
+
+<!--- end md --->
+
+<!--- md ---> 
+
+### 配列の要素書き込み (ストア命令)
+
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile store.c
+
+void store(float * a, long n) {
+  asm volatile("# ==========");
+  for (long i = 0; i < n; i++) {
+    a[i] = i;
+  }
+  asm volatile("# ----------");
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native -S store.c
+cat store.s
+<!--- end code --->
+
+<!--- md ---> 
+
+注目点:
+
+* a[i] への書き込みに対応する命令はどれか?
+
+<!--- end md --->
+
+
+<!--- md ---> 
+### 構造体へのポインタ
+
+ * 例えば以下の abc という構造体では, a, b, cという3つの要素が4バイト(float)ずつ離れて並ぶ
+ * p->a, p->b, p->cがそれぞれどこをアクセスしているかを観察せよ
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile struct.c
+
+typedef struct {
+  float a;
+  float b;
+  float c;
+} abc;
+
+float ab_plus_c(abc * p) {
+  return p->a * p->b + p->c;
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native -S struct.c
+cat struct.s
+<!--- end code --->
+
+<!--- md ---> 
+
+注目点:
+
+* p->a, p->b, p->c などの読み出しに対応している命令はどれか?
+* 配列の要素であろうと構造体の要素であろうと, 機械語レベルで使う命令は同じ
+
+<!--- end md --->
+
+<!--- md ---> 
+
+### 構造体の配列
+<!--- end md --->
+
+<!--- code w kernel=python --->
+%%writefile a_of_s.c
+
+typedef struct {
+  float a;
+  float b;
+  float c;
+} abc;
+
+float sum_of_b(abc * p, long n) {
+  float s = 0.0;
+  asm volatile("# ==========");
+  for (long i = 0; i < n; i++) {
+    s += p[i].b;
+  }
+  asm volatile("# ----------");
+  return s;
+}
+<!--- end code --->
+
+<!--- code w kernel=bash --->
+gcc -O3 -march=native -S a_of_s.c
+cat a_of_s.s
+<!--- end code --->
