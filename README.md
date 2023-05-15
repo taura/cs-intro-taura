@@ -1,13 +1,13 @@
 # cs-intro-taura
 
-計算科学概論 2022
+計算科学概論
 
 * このフォルダはOakbridge CXのLustreフォルダ上に展開して下さい.
 * このファイルを読んでいるならすでに以下は実行済みのはずですが一応再掲
 
 ```
-obcx00$ cd /work/gt77/$(whoami)
-obcx00$ git clone https://gitlab.eidos.ic.i.u-tokyo.ac.jp/tau/cs-intro-taura.git
+obcx00$ cd /work/gt11/$(whoami)
+obcx00$ git clone https://github.com/taura/cs-intro-taura.git
 ```
 すでに一度上記をやっている人は消してやり直してもよいし, すでに作業を始めている人は
 ```
@@ -39,7 +39,7 @@ obcx00$ git pull
 
 * コードはOakbridge CX上の
 ```
-/work/gt77/t77xxx/cs-intro-taura (t77xxxは自分のユーザ名)
+/work/gt11/t11xxx/cs-intro-taura (t11xxxは自分のユーザ名)
 ```
 というフォルダ中に入れてください(これも提出物の一部)
 
