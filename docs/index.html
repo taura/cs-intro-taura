@@ -1,0 +1,370 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>計算科学概論</title>
+
+<style>
+h1 {
+  font-size   : 14pt;
+  font-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-style     : solid;
+  border-width     : 1pt 1pt 0pt 15pt ;
+   
+  border-color     : #99A1AA;
+  background-color : #DDDDEE;
+}
+
+h2 {
+  font-size   : 13pt;
+  font-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-style     : solid;
+  border-width     : 1pt 1pt 0pt 15pt ;
+   
+  border-color     : #99A1AA;
+  background-color : #EEEEFF;
+}
+
+h3 {
+  font-size   : 12pt;
+  font-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-style     : solid;
+  border-width     : 1pt 1pt 0pt 15pt;
+  border-color     : #99A1AA;
+  background-color : #EEEEFF;
+}
+
+div {
+  font-size   : 12pt;
+  font-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-color     : #99A1AA;
+}
+
+p {
+  font-size   : 12pt;
+  font-family : serif;
+  border-color     : #99A1AA;
+}
+
+pre {
+  background-color:#efe;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>計算科学概論<br />田浦健次朗</h1>
+<div>
+<font size=-1>(the page is encoded in UTF-8)</font>
+</div>
+
+<h2>計算科学概論ホームページ</h2>
+<div>
+  <a href=http://www.compsci-alliance.jp/ > こちら</a>
+</div>
+
+<h2>お知らせ</h2>
+<div>
+  新しいものが上です.
+  <font color=blue>最初の青字部分がアナウンス日</font> です．
+  
+  <font color=red>授業をしながら更新するのでしょっちゅうreloadしてください</font>．
+
+  <ul>
+    <li><font color="blue">(2023/05/14)</font>
+      <ul>
+        <li>このページにたどり着くには,
+          <a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/course?idnumber=2023FEN-AP4901L10F01"
+             target="_blank">
+            ITC-LMS</a>
+          の<a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/course?idnumber=2023FEN-AP4901L10F01&directId=material684990"
+               target="_blank">講義資料</a>の欄から
+          「5/15, 6/26 田浦担当分 - 講義HP」を見てください
+        </li>
+        
+        <li>5/15 の予定
+          <ul>
+            <li>13:00-13:45 <a href=slides/pdf/taura_lecture.pdf target="_blank">スライド</a> </li>
+            <li>13:45- 演習のやり方説明, 演習</li>
+          </ul>
+        </li>
+        
+        <li>演習では, 以下の環境を使います.
+          <ol>
+            <li>Jupyter環境: 
+              <a href="html/jupyter.html">Jupyter環境へのアクセスの仕方</a>
+              を参照. 必要なユーザ名とパスワードは
+              ITC-LMS の課題
+              <a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/course/report/submission?idnumber=2023FEN-AP4901L10F01&reportId=121467"
+                 target="_blank">
+                (提出不要) 5/15, 6/26 Jupyter環境のユーザ名, パスワード受取のためのダミー課題
+              </a>で, コメントフィードバックとして各人にお知らせしています
+              (この課題を提出する必要はありません)
+            </li>
+            <li>スーパーコンピュータ (Oakbridge-CX):
+              他の先生と共通です. ユーザ名は以前に配られているはず(Jupyter環境のものとは違います)
+              <ol>
+                <li>ssh でログイン</li>
+                <li><pre>
+cd /work/gt11/$(whoami)
+git clone https://github.com/taura/cs-intro-taura.git
+module unload intel
+module load gcc/7.5.0</pre>
+                </li>
+              </ol>
+            </li>
+          </ol>
+        </li>
+        <li>Jupyter notebookは主に手軽な練習のため.
+          cs-intro-taura.git は主に最終課題の材料
+          (だが, 前者のファイルも全部含んでいます).
+        </li>
+        <li>最終課題は cs-intro-taura/02mm, cs-intro-taura/03nbody の高速化.
+          ITC-LMSにアナウンス済み (<a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/course/report/submission?idnumber=2023FEN-AP4901L10F01&reportId=121469" target="_blank">
+            田浦分 (5/15, 6/26) 課題
+          </a>)
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+
+<h2>スライド・資料</h2>
+<div>
+<ul>
+  <li><a href=slides/pdf/taura_lecture.pdf target="_blank">
+      講義スライド</a>
+  </li>
+  <li>
+    講義資料はITC-LMSにもアップする予定ですが,
+    確定するまではこちらで更新します.
+  </li>
+</ul>
+</div>
+
+
+<h2>過去の記録</h2>
+<div>
+  見る必要はありません. 参考＋もしかして必要になったときのために残しています
+</div>
+
+<h3>2022</h3>
+<div>
+  <font color="gray" size=-2>
+    <ul>
+      <li>
+        6/13 の授業中に, 実行結果に関してわからなくなった点について補足です.
+        以下のような出力
+        <pre>[t77006@obcx02 02mm]$ ./exe/mm_simd.exe 
+A = 16 x 128 (8192 bytes)
+B = 128 x 32 (16384 bytes)
+C = 16 x 32 (2048 bytes)
+repeat C += A * B 1 times
+131072 flops, total 26624 bytes
+          cpu cycles: 30429
+        instructions: 25694
+ branch instructions: 4254
+          ref cycles: 27292
+                time: 0.000
+4.803 flops/clock = 0.150 vfmadds/clock
+4.307 flops/cpu clock = 0.135 vfmadds/cpu clock
+12.127313 GFLOPS
+OK: max relative error = 0.000000</pre>
+      で
+      <pre>4.803 flops/clock = 0.150 vfmadds/clock
+4.307 flops/cpu clock = 0.135 vfmadds/cpu clock</pre>
+      
+という2つのclock がありますが,
+      <ol>
+        <li>1コア(OpenMPなし. SIMDとILP)での性能を追求するに当たっては, 後者を使って <font color=blue>2 vfmadds/cpu clock</font> が目指す max の性能になります. なおこのとき前者はもう少し高い値を示していると思います</li>
+        <li>複数コアを使った(OpenMPありの)場合はこれをコア数倍したものがmaxの性能なのですが, 授業中に発覚したとおり, 前者の値 (xxx vfmadds/cpu clock)は複数コアを使った場合に(こちらのミスにより)おかしな数字になりますので, 後者(xxx vfmadds/clock)を使ってください. 両者はプロセッサの持つ消費電力調整機能(動いているコア数などによって動作周波数を変える)により, 特に動作しているコア数が少ないときに異なります(前者が速い値を示す)が, ほとんどすべてのコアを使った場合はほとんど変わりません.
+          よって多数のコアを使った場合, こちらで<font color=blue>(2 x コア数) vfmadds/clock</font>がmax (目標)です.
+        </li>
+        <li>前者を, 複数コアでも正しくなるようにできるか調査しますがすぐにできると期待しないで, 進めてください.
+        </li>
+      </ol>
+      原理的に, OpenMPのスレッド(OMP_NUM_THREADS)を56を越えて増やしても早くなることはないと思って良いので, <font color=blue>112 vfmadds/clock</font>に近い数字が出ればすごい, ということ
+      <font color=blue>
+        (112 vfmadds/clock = 112 * 32 flops/clock = 112 * 32 * 2.7 GFLOPS = 9.6TFLOPS)
+      </font>
+      </li>
+      <li>その他の補足: 性能を追求する際,
+        <ul>
+          <li>1コアで, 比較的小さなデータ (total 26624 bytes のところが 32768 bytesよりも十分小さい) で, -r 1000 とかで繰り返し回数を増やして性能が出るのが最初の一歩 (繰り返しを多くすると C += A * B を繰り返し行う関係上誤差が増えていくが, 小さな r で誤差がでなければあまりバグを疑う必要はない)</li>
+          <li>データを大きくするとデータがキャッシュから外れるせいで遅くなる. この問題への対処方法は中村先生4/11 のスライドの後半にヒントがある (キャッシュブロッキング)</li>
+        </ul>
+      </li>
+      
+      <li>このページにたどり着くには,
+        ITC-LMSの講義資料の欄から
+        「6/6, 6/13 高性能プログラミングと性能測定 (田浦分) 資料 (ホームページ)」を見てください
+      </li>
+      
+      <li>6/6 の予定 (時間は不正確. 適宜ずらします)
+        <ul>
+          <li>13:00-13:45 <a href=slides/pdf/taura_lecture.pdf target="_blank">スライド</a> </li>
+          <li>13:45- 演習のやり方説明, 演習</li>
+        </ul>
+      </li>
+      
+      <li>演習では,
+        <ul>
+          <li>Jupyter環境</li>
+          <li>スーパーコンピュータ(Oakbridge-CX)</li>
+          を使います.
+        </ul>
+        前者へのアクセスの仕方は,
+        ITC-LMS の課題
+        <a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/course?idnumber=2022FEN-AP4901L10F01"
+           target="_blank">
+          (提出不要) 6/6, 6/13 Jupyter環境パスワード受取のためのダミー課題
+        </a>で, コメントフィードバックとして各人にお知らせしています
+        (この課題を提出する必要はありません)
+      </li>
+    
+      <li>演習のやり方
+        <ol>
+          <li>Jupyter notebook
+            <ol>
+              <li>URL に ユーザ名, パスワードでログイン</li>
+              <li>Help -&gt; Launch Classic Notebook</li>
+              <li>Assignments を選択; Released assignments の cs-intro-taura を Fetch ; Downloaded assignments に現れる cs-intro-taura -&gt; の下のファイルを順に開ける</li>
+            </ol>
+          </li>
+          <li>Oakbridge CX
+            <ol>
+              <li>ssh でログイン</li>
+              <li><pre>
+                  cd /work/gt77/$(whoami)
+                  git clone https://gitlab.eidos.ic.i.u-tokyo.ac.jp/tau/cs-intro-taura.git
+                  module unload intel
+                  module load gcc/7.5.0</pre>
+              </li>
+            </ol>
+          </li>
+          <li>Jupyter notebookは主に手軽な練習のため.
+            cs-intro-taura.git は主に最終課題の材料
+            (だが, 前者のファイルも全部含んでいます).
+          </li>
+          <li>最終課題は cs-intro-taura/02mm, cs-intro-taura/03nbody の高速化.
+            ITC-LMSにアナウンス済み
+            <font color="blue">(第6回 (6/6), 第7回 (6/13) 田浦分課題)</font>
+          </li>
+        </ol>
+      </li>
+    </ul>
+  </font>
+</div>
+
+
+<h3>2021</h3>
+<div>
+  <font color="gray" size=-2>
+  <ul>
+    <li><font color="blue">2021/7/12</font>
+      田浦の回は今日までですが
+      <font color="red">「計算科学概論」は
+        今日で終わりではない(来週まである)</font>
+      のでご注意ください
+      (「7/19（3限） 大久保先生 「格子スピン模型の計算科学」に対応する実習」)
+    </li>
+    
+    <li><font color="blue">2021/7/11</font>
+      今日の授業は,
+      <ul>
+        <li><a href="https://drive.google.com/drive/folders/1M5v_vatYjZzdYWTfz74McJlpNdpXhyZM" target="_blank">ビデオ</a>による説明(各自のペースで見て下さい.
+          各自で可能な限り早回し推奨)</li>
+        <li>演習 (Jupyter notebookとOakbridge CX)</li>
+        <li>質問 (授業時間を利用して, sli.do, chat, 声で質問してください)</li>
+      </ul>
+    </li>
+    <li><font color="blue">2021/7/11</font>  <a href="https://www.sli.do/" target="_blank">sli.do</a> イベントコード = <a href="https://app.sli.do/event/ina4lpur/live/questions" target="_blank">cs-07-12</a> </li>
+    
+    <li><font color=blue>2021/7/4</font> 
+      開設
+    </li>
+    
+    <li>このページにたどり着くには,
+      ITC-LMSの講義資料の欄から
+      「7/5, 7/12 高性能プログラミングと性能測定 (田浦分)
+      資料 (ホームページ)」を見てください
+
+      (または
+      <a href="https://tinyurl.com/y8lmk9on">
+        https://tinyurl.com/y8lmk9on
+      </a>
+      にアクセス)
+
+    </li>
+
+    <li>7/5 の予定 (時間は不正確. 適宜ずらします)
+      <ul>
+        <li>13:00-13:30 <a href=slides/pdf/taura_lecture.pdf target="_blank">スライド</a> </li>
+        <li>13:30-14:00 演習のやり方説明, 休憩 + 少し演習</li>
+        <li>14:00-14:45 <a href=slides/pdf/taura_lecture.pdf target="_blank">スライド</a> </li>
+      </ul>
+    </li>
+
+    <li><font color="blue">2021/7/5</font>  <a href="https://www.sli.do/" target="_blank">sli.do</a> イベントコード = <a href="https://app.sli.do/event/yznahf6q/live/questions" target="_blank">cs-07-05</a> </li>
+    
+    <li>演習では,
+      <ul>
+        <li>Jupyter環境</li>
+        <li>スーパーコンピュータ(Oakbridge-CX)</li>
+        を使います.
+      </ul>
+      前者へのアクセスの仕方は,
+      ITC-LMS の課題
+      <a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/course/report/submission?idnumber=2021FEN-AP4901L10F01&reportId=68545" target="_blank">
+        7月5日 田浦 Jupyter notebook の URL, ユーザ名, パスワード
+      </a>で, コメントフィードバックとして各人にお知らせしています
+      (この課題を提出する必要はありません)
+    </li>
+    
+    <li>演習のやり方 (<a href="https://drive.google.com/drive/folders/1M5v_vatYjZzdYWTfz74McJlpNdpXhyZM?usp=sharing" target="_blank">動画 (2021-07-05-演習の始め方.mp4) </a>):
+      <ol>
+        <li>Jupyter notebook
+          <ol>
+            <li>URL に ユーザ名, パスワードでログイン</li>
+            <li>Assignments を選択; Released assignments の cs-intro-taura を Fetch ; Downloaded assignments に現れる cs-intro-taura -&gt; の下のファイルを順に開ける</li>
+          </ol>
+        </li>
+        <li>Oakbridge CX
+          <ol>
+            <li>ssh でログイン</li>
+            <li><pre>
+cd /work/gt67/$(whoami)
+git clone https://gitlab.eidos.ic.i.u-tokyo.ac.jp/tau/cs-intro-taura.git
+module unload intel
+module load gcc/7.5.0
+              </pre>
+            </li>
+          </ol>
+        </li>
+        <li>Jupyter notebookは主に手軽な練習のため.
+          cs-intro-taura.git は主に最終課題の材料
+          (だが, 前者のファイルも全部含んでいます).
+        </li>
+        <li>最終課題は cs-intro-taura/02mm, cs-intro-taura/03nbody の高速化.
+          LMSでのアナウンスはまだです
+        </li>
+      </ol>
+    </li>
+  </ul>
+  </font>
+</div>
+
+</body>
+</html>

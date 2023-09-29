@@ -1,0 +1,263 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Language" content="ja">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+    <script src="js/lang.js"></script>
+
+    <title>Jupyter環境へのアクセス方法 / How to access Jupyter environment</title>
+
+    <style>
+
+<style>
+h1 {
+  font-size   : 24pt;
+  xfont-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-style     : solid;
+  border-width     : 1pt 1pt 0pt 15pt ;
+
+  border-color     : #99A1AA;
+  background-color : #DDDDEE;
+}
+
+h2 {
+  font-size   : 20pt;
+  xfont-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-style     : solid;
+  border-width     : 1pt 1pt 0pt 15pt ;
+
+  border-color     : #99A1AA;
+  background-color : #EEEEFF;
+}
+
+h3 {
+  font-size   : 18pt;
+  xfont-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-style     : solid;
+  border-width     : 1pt 1pt 0pt 15pt;
+  border-color     : #99A1AA;
+  background-color : #EEEEFF;
+}
+
+div {
+  font-size   : 16pt;
+  xfont-family : serif;
+  margin      : 10pt;
+  padding     : 3pt 20pt;
+  border-color     : #99A1AA;
+}
+
+p {
+  font-size   : 16pt;
+  xfont-family : serif;
+  border-color     : #99A1AA;
+}
+
+pre {
+  background-color:#efe;
+}
+    </style>
+
+  </head>
+
+  <body onload="main()">
+
+  <body>
+
+    <h1 class="ja">Jupyter環境の使い方</h1>
+    <h1 class="en">How to access Jupyter environment</h1>
+
+    <div>
+      <p>
+        <a href="../">top</a>
+        
+        <a href="?lang=ja">
+          <img src=img/japan_flag.png border=1 height=16 alt=Japanese />
+        </a>
+        /
+        <a href="?lang=en">
+          <img src=img/english_flag.png border=1 height=16 alt=English />
+        </a>
+      </p>
+      <p>
+        本ゼミでプログラミング演習をする環境(Jupyter)
+        へのアクセス方法を説明します. 以下に従ってください.
+      </p>
+    </div>
+
+    <h2 class="ja">
+      ユーザ名・パスワード入手
+    </h2>
+    <h2 class="en">
+      Get your user name and password
+    </h2>
+    <div>
+      <ul>
+        <li class="ja">
+          <a href="https://itc-lms.ecc.u-tokyo.ac.jp/"
+             target="_blank" rel="noopener">ITC-LMS</a>
+          で当該授業のページに行く
+        </li>
+        <li class="en">
+          Go to <a href="https://itc-lms.ecc.u-tokyo.ac.jp/"
+                target="_blank" rel="noopener">ITC-LMS</a>
+          and open the page of the course
+        </li>
+        
+        <li class="ja">
+          課題一覧の中から, "演習用Jupyter環境のユーザ名・パスワード受取のための提出不要ダミー課題" の,
+          「教員からのコメント」を見る(課題を提出する必要はない)
+        </li>
+        <li class="en">
+          From the assignment list, find "A dummy assignment for getting Jupyter user name and password"
+          and get its "Comments from the instructor" (you don't have to submit
+          a report for the assignment)
+        </li>
+        
+        <li class="ja">
+          注: 上記課題が見えない人は, ITC-LMSで受講登録する
+          (参考: <a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/manual/download?file=2"
+                    target="_blank" rel="noopener">ITC-LMS学生向け利用マニュアル(簡易版) p23</a>)
+          注: ITC-LMS上で受講登録しても履修登録したことにはなりません.
+          履修することにした場合, <a href="https://utas.adm.u-tokyo.ac.jp/"
+                                     target="_blank" rel="noopener">UTAS</a>.
+          から履修登録してください.
+        </li>
+        <li class="en">
+          Note: if you do not find the assignment, register yourself to the course course
+          by "Register a course" button in ITC-LMS
+          (see: <a href="https://itc-lms.ecc.u-tokyo.ac.jp/lms/manual/download?file=1"
+                   target="_blank" rel="noopener">ITC-LMS User Manual for Students p28</a>)
+          Note: registering to the course in ITC-LMS does not sign up for the course.
+          If you decide to sign up for the course, do it from
+          <a href="https://utas.adm.u-tokyo.ac.jp/"
+             target="_blank" rel="noopener">UTAS</a>.
+        </li>
+
+        <li class="ja">
+          「教員からのコメント」に
+<pre>user=u2xxxx password=xxxxxxxx</pre>
+と書かれているのを見る. <a href="https://taulec.zapto.org:8000/"
+           target="_blank" rel="noopener">https://taulec.zapto.org:8000/</a>
+にアクセスしてユーザ名とパスワードを入力してログイン. うまくいけばこのようなページが現れる.
+        </li>
+        <li class="en">
+          Find something like
+<pre>user=u2xxxx password=xxxxxxxx</pre>
+in "comments from the instructor".
+Visit <a href="https://taulec.zapto.org:8000/"
+         target="_blank" rel="noopener">https://taulec.zapto.org:8000/</a>
+and login with the user name and password. If nothing goes wrong, you will see a page like this.
+        </li>
+      </ul>
+
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/Kh1FxiUA8Ok" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      
+    </div>
+
+    <h2 class="ja">
+      演習用ノートブックの入手の仕方 (Nbgraderの使い方)
+    </h2>
+    <h2 class="en">
+      How to get notebooks for exercises (Working with Nbgrader)
+    </h2>
+    <div>
+      <ul>
+        <li class="ja">課題や演習用のファイルを配布するのにNbgraderを使う.</li>
+        <li class="en">We use Nbgrader to distribute files for assignments or excercises.</li>
+        
+        <li class="ja">上部メニューから, <font color="blue">Nbgrader</font> -&gt;
+          <font color="blue">Assignment List</font>を選択. このようなページが現れる.
+        </li>
+        <li class="en">Select <font color="blue">Nbgrader</font> -&gt;
+          <font color="blue">Assignment List</font> in the top manu, to see a page like this.
+        </li>
+        
+        <li class="ja">配布物がある場合, ページ上部に配布物の名前と<font color="blue">Fetch</font>というボタンが現れるので, ボタンを押して入手
+        </li>
+        <li class="en">When you have an item to work on, you find its name along with a <font color="blue">Fetch</font> button near top of the page, press the button to get it.
+        </li>
+
+        
+        <li class="ja">▶ をクリックすると配布されたファイルが現れるのでクリックして開く. </li>
+        <li class="en">Press ▶ to show files fetched. Click one to open it.</li>
+        
+        <li class="ja">あとはファイルに書かれている指示に従って作業をする.</li>
+        <li class="en">Follow instruction in the file.</li>
+      </ul>
+
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/dGAfRZuHhJU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+      <ul>
+        <li class="ja">Jupyterlabのnotebookでの作業を課題として提出する場合,
+          Jupyterlabの<font color="blue">Nbgrader</font> -&gt;
+          <font color="blue">Assignment List</font> から
+          <font color="blue">Submit</font> ボタンで
+          提出しつつ, ITC-LMSでもその旨の報告だけ(一行)を提出する
+        </li>
+        <li class="en">When you send your work done in Jupyterlab
+          notebook, send it in Jupyterlab AND ITC-LMS;
+          in Jupyterlab, 
+          open <font color="blue">Nbgrader</font> -&gt;
+          <font color="blue">Assignment List</font> in the menu
+          and press <font color="blue">Submit</font> button;
+          In ITC-LMS, send a one-line report for the assignment
+          to say you have done that.
+        </li>
+      </ul>
+
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/3LelysDSeTk" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      
+    </div>
+
+    <a name="when_something_went_wrong"></a>
+    <h2 class="ja">
+      おかしなことになったら
+    </h2>
+    <h2 class="en">
+      If things go wrong ...
+    </h2>
+    <div>
+      <ul>
+        <li class="ja">Jupyterでは物事が思う通りに動かないことがよくあるので,
+          脱出・回避方法を覚えておくと良い
+        </li>
+        <li class="en">Things often go wrong with Jupyter.
+          You want to know how to escape from a wrong state.
+        </li>
+      </ul>
+      <ol>
+        <li class="ja">比較的穏やかなリセット方法: 上部のメニューから<font color="blue">Kernel</font>-&gt;
+          <font color="blue">Restart Kernel</font>
+          (または<font color="blue">Restart Kernel and Clear Output</font>)を選択
+        </li>
+        <li class="en">A modest way to reset: Select <font color="blue">Kernel</font>-&gt;
+          <font color="blue">Restart Kernel</font>
+          (or <font color="blue">Restart Kernel and Clear Output</font>)
+          from the top menu.
+        </li>
+
+        <li class="ja">すべてがダメなときのリセット方法: 上部のメニューから<font color="blue">File</font>-&gt;
+          <font color="blue">Hub Control Panel</font>を選択. <font color="red">Stop My Server</font>
+          を押して, <font color="blue">Start My Server</font>を押す.
+        </li>
+        <li class="en">The "reset all" for when nothing else works:
+          Select <font color="blue">File</font>-&gt;
+          <font color="blue">Hub Control Panel</font>
+          from the top menu.  Press <font color="red">Stop My Server</font>
+          and then <font color="blue">Start My Server</font>.
+        </li>
+      </ol>
+
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/op_SMRq5EfU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    
+
+  </body>
+
