@@ -1,11 +1,11 @@
 #!/bin/bash
 #------ pjsub option --------#
-#PJM -L rscgrp=lecture
+#PJM -L rscgrp=lecture-o
 #PJM -L node=1
 #PJM --mpi proc=1
 #PJM --omp thread=1
 #PJM -L elapse=0:01:00
-#PJM -g gt11
+#PJM -g gt27
 #PJM -j
 #PJM -o 0done.txt
 done_txt=0done.txt
